@@ -8,5 +8,5 @@ To get the current development version from github:
 
 ```R
 install.packages("devtools")
-devtools::install_github("fchuffar/botapply")
+devtools::install_github("fchuffar/bot")
 ```
