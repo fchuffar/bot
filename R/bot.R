@@ -26,7 +26,7 @@ run_engine = structure(function (## Execute bag of tasks parallely, on as many c
 ### This bag of tasks engine forks processes on as many cores as the current computing node owns. Each sub-process takes a task randomly in the list of tasks. For each task, it starts by taking a lock on this task (creating a file named out_filename.lock). Next, it executes the task_processor (a function) using the corresponding set of parameters (task). When this execution is completed, it dumps task_processor results into a results file (named out_filename.RData).
 tasks,  ##<< A list of tasks, each task is a list of key values that will be passed as arguments to the task_processor. Note that task$out_filename is a mandatory parameter.
 task_processor, ##<< A function that will be called for each task in the task list \emph{tasks}.
-debug=FALSE, ##<< If \emph{TRUE} no process will be forked, the list of tasks will be executed in the current process.
+DEBUG=FALSE, ##<< If \emph{TRUE} no process will be forked, the list of tasks will be executed in the current process.
 starter_name="~/.start_best_effort_jobs", ##<< Path to file that will be deleted after the execution of all tasks if \emph{rm_starter} is set to \emph{TRUE}.
 rm_starter=TRUE, ##<< If \emph{TRUE} the file \emph{starter_name} will be deleted after the execution of all tasks.
 log_dir="log", ##<< Path to the \emph{log} directory.
@@ -46,7 +46,7 @@ nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be com
     stats$proc_id = proc_id
     stats$UID = UID
     set.seed(proc_id + UID)
-    if (!debug) {
+    if (!DEBUG) {
       Sys.sleep(floor(runif(1,1,30)))
     }
     hostname = system("hostname", intern=TRUE)
@@ -55,8 +55,8 @@ nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be com
     need_rerun = TRUE
     nb_loop = 0
     while (need_rerun){
-        need_rerun = FALSE
-        for (task in sample(tasks)) {
+      need_rerun = FALSE
+      for (task in tasks) {
         # Check mandatory task attribute
         if (is.null(task$out_filename)) {
           print("ERROR! Attribute task$out_filename is mandatory.")
@@ -103,7 +103,7 @@ nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be com
     sink()
   }
   UID = round(runif(1,1,1000000))
-  if (debug) {
+  if (DEBUG) {
     nb_proc = 1
     proc_id = 0
     print("running engine witout forking (DEBUG MODE)...")
@@ -116,6 +116,7 @@ nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be com
     pids = c()
     for (proc_id in 1:nb_proc) {
       # Here we fork!
+      tasks = sample(tasks)
       pids = c(pids,fork(forked_part))
     }
     # wait until each childs finishe, then display their exit status
