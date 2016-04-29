@@ -72,7 +72,12 @@ nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be com
           print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " is locked... skipping.", sep=""))
           need_rerun = TRUE
         } else if (file.exists(save_filename)) {
-          print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " exists... skipping.", sep=""))
+          if (file.info(save_filename)$size == 0) {
+            file.rename(save_filename, paste(save_filename, ".size0", sep="")) 
+            need_rerun = TRUE
+          } else {
+            print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " exists... skipping.", sep=""))                      
+          }
         } else {
           need_rerun = TRUE
           print(paste("[proc_", proc_id , "] ", date(), " taking lock on ", lock_filename, " and computing...", sep=""))
