@@ -32,6 +32,7 @@ rm_starter=TRUE, ##<< If \emph{TRUE} the file \emph{starter_name} will be delete
 log_dir="log", ##<< Path to the \emph{log} directory.
 bot_cache_dir = "cache",   ##<< the directory where task results are cached
 nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be computed.
+nb_loop = 0, ##<< the number of the first loop (experimental).
 ... ##<< Other arguments that will be passed to \emph{task_processor}.
 ){  
   if (!file.exists(log_dir)) {
