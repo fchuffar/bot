@@ -54,7 +54,6 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
     stats$hostname = hostname
     sink(paste(log_dir, "/proc_id_hostname_", proc_id, "_", hostname, ".log", sep=""), type =c("output", "message"), split = TRUE)    
     need_rerun = TRUE
-    nb_loop = 0
     while (need_rerun){
       need_rerun = FALSE
       for (task in tasks) {
@@ -75,6 +74,7 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
         } else if (file.exists(save_filename)) {
           if (file.info(save_filename)$size == 0) {
             file.rename(save_filename, paste(save_filename, ".size0", sep="")) 
+            print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " is empty... renaming file.", sep=""))                      
             need_rerun = TRUE
           } else {
             print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " exists... skipping.", sep=""))                      
