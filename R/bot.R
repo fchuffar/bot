@@ -22,13 +22,16 @@ get_nb_proc = function ## Empirical function to find the number of core of the c
 ### The number of core that the current computing node owns.
 }
 
+#' @importFrom fork fork
+#' @importFrom fork wait
+#' @export
 run_engine = structure(function (## Execute bag of tasks parallely, on as many cores as the current computing node owns.
 ### This bag of tasks engine forks processes on as many cores as the current computing node owns. Each sub-process takes a task randomly in the list of tasks. For each task, it starts by taking a lock on this task (creating a file named out_filename.lock). Next, it executes the task_processor (a function) using the corresponding set of parameters (task). When this execution is completed, it dumps task_processor results into a results file (named out_filename.RData).
 tasks,  ##<< A list of tasks, each task is a list of key values that will be passed as arguments to the task_processor. Note that task$out_filename is a mandatory parameter.
 task_processor, ##<< A function that will be called for each task in the task list \emph{tasks}.
 DEBUG=FALSE, ##<< If \emph{TRUE} no process will be forked, the list of tasks will be executed in the current process.
 starter_name="~/.start_best_effort_jobs", ##<< Path to file that will be deleted after the execution of all tasks if \emph{rm_starter} is set to \emph{TRUE}.
-rm_starter=TRUE, ##<< If \emph{TRUE} the file \emph{starter_name} will be deleted after the execution of all tasks.
+rm_starter=FALSE, ##<< If \emph{TRUE} the file \emph{starter_name} will be deleted after the execution of all tasks.
 log_dir="log", ##<< Path to the \emph{log} directory.
 bot_cache_dir = "cache",   ##<< the directory where task results are cached
 nb_proc=NULL, ##<< If not NULL fix the number of core on which tasks must be computed.
@@ -42,6 +45,11 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
     dir.create(bot_cache_dir, recursive = TRUE)    
   }
   print(paste("#tasks: ", length(tasks)))
+  compute_task_out_filename = function(task_processor, task) {
+    task_processor_name = as.character(substitute(task_processor))
+    ret = paste(task_processor_name, paste(task, collapse="_"), sep="_")    
+    return(ret)
+  }
   forked_part = function(){
     stats = list()
     stats$proc_id = proc_id
@@ -59,12 +67,12 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
       for (task in tasks) {
         # Check mandatory task attribute
         if (is.null(task$out_filename)) {
-          print("ERROR! Attribute task$out_filename is mandatory.")
-          exit(1)
+          task$out_filename = compute_task_out_filename(task_processor, task)
+          # stop("Attribute task$out_filename is mandatory.")
         }
         # Check if task is already done or currently processed        
         lock_filename = paste(bot_cache_dir, "/", task$out_filename, ".lock", sep="")
-        save_filename = paste(bot_cache_dir, "/", task$out_filename, ".RData", sep="")
+        save_filename = task$save_filename
         lock_filename_bis = paste(bot_cache_dir, "/", task$out_filename, "_", (proc_id + UID) ,".lock4no", sep="")
         for_nothing_filename = paste(bot_cache_dir, "/", task$out_filename, "_", (proc_id + UID) , ".RData4no", sep="")
         stats$start_date = as.integer(format(Sys.time(), "%s"))
@@ -73,9 +81,9 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
           need_rerun = TRUE
         } else if (file.exists(save_filename)) {
           if (file.info(save_filename)$size == 0) {
+            need_rerun = TRUE
             file.rename(save_filename, paste(save_filename, ".size0", sep="")) 
             print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " is empty... renaming file.", sep=""))                      
-            need_rerun = TRUE
           } else {
             print(paste("[proc_", proc_id , "] ", date(), " ", save_filename, " exists... skipping.", sep=""))                      
           }
@@ -100,14 +108,22 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
       }
       nb_loop = nb_loop + 1
     }
+    print("all tasks have been processed." )
     if (rm_starter) {
-      print("all task have been processed. Removing ~/.start_best_effort_jobs..." )
+      print(paste("Removing ", starter_name, "...", sep=""))
       file.remove(starter_name)
-    } else {
-      print("all task have been processed." )
     }
     sink()
   }
+  tasks = lapply(tasks, function(task) {
+    # Check mandatory task attribute
+    if (is.null(task$out_filename)) {
+      task$out_filename = compute_task_out_filename(task_processor, task)
+    }
+    task$save_filename = paste(bot_cache_dir, "/", task$out_filename, ".RData", sep="")
+    return(task)    
+  })
+  orig_tasks = tasks
   UID = round(runif(1,1,1000000))
   if (DEBUG) {
     nb_proc = 1
@@ -130,7 +146,8 @@ nb_loop = 0, ##<< the number of the first loop (experimental).
       wait(pid) 
     }
   } 
-  # Nothing
+  # Returns task'$ output file names
+  return(orig_tasks)
 }, ex=function(){
   
   # We define a basic task_processor
